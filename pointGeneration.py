@@ -5,11 +5,17 @@ import time
 import random
 import math
 from a_star_algorithm import find_path
-import heapq
 
 WINDOW_SIZE = [800, 800]
 
 BLUE = [0, 0, 255]
+MEDIUM_BLUE = [0,0,200]
+DARK_BLUE = [0,0,150]
+
+SAND = [255, 255, 204]
+PLANES_GREEN = [76, 153, 0]
+FOREST_GREEN = [0, 102, 0]
+DARK_GREEN = [0,51,0]
 GREEN = [0, 255, 0]
 WHITE = [255, 255, 255]
 BROWN = [139, 69, 19]
@@ -22,21 +28,19 @@ ORANGE = [255, 165, 0]
 LIGHTBLUE = [173, 216, 230]
 ARMY_LEADER_RADIUS = 20
 GREY = [128, 128, 128]
-seed = 46
+seed = random.randint(1, 250)
 
 WIDTH = 10
 HEIGHT = 10
 
-MARGIN = 0
-
 MOVE_PROBABILITY_MOVING = 0.9
 MOVE_PROBABILITY_STILL = 0.1
-WATER_DEATH_TIME = 10  
+WATER_DEATH_TIME = 5  
 SEX_THRESHOLD = 2
 FACTION_COLORS = [RED, DARKGREEN, LIGHTBLUE, PINK, PURPLE, ORANGE]
 FACTION_RADIUS = 10
-FACTION_JOIN_TIME = 2 
-FACTION_MIN_MEMBERS = 3
+FACTION_JOIN_TIME = 1 
+FACTION_MIN_MEMBERS = 4
 
 
 world_shape = [int(WINDOW_SIZE[0]/WIDTH), int(WINDOW_SIZE[1]/HEIGHT)]
@@ -449,12 +453,20 @@ while not done:
     for row in range(world_shape[0]):
         for column in range(world_shape[1]):
             color = WHITE
-            if world[row][column] < 0:
+            if world[row][column] < -0.25:
+                color = DARK_BLUE
+            elif world[row][column] < -0.1:
+                color = MEDIUM_BLUE
+            elif world[row][column] < 0:
                 color = BLUE
+            elif world[row][column] < 0.05:
+                color = SAND
             elif world[row][column] < 0.2:
-                color = GREEN
+                color = PLANES_GREEN
+            elif world[row][column] < 0.3:
+                color = FOREST_GREEN
             else:
-                color = BROWN
+                color = WHITE
             pygame.draw.rect(screen, color, [(WIDTH) * column + shake_x + shake_monster_x, (HEIGHT) * row + shake_y + shake_monster_y, WIDTH, HEIGHT])
     
     if (click_spawn_npc):
@@ -550,7 +562,7 @@ while not done:
                     select_army_1.battle_count = 0
             else:
                 select_army_1.battle_count += 1
-                
+
         elif (select_army_2.in_battle):
             if (select_army_2.battle_count == 10):
                 size_army = len(select_army_2.members)
