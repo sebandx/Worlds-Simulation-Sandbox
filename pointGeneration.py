@@ -35,8 +35,8 @@ WATER_DEATH_TIME = 10
 SEX_THRESHOLD = 2
 FACTION_COLORS = [RED, DARKGREEN, LIGHTBLUE, PINK, PURPLE, ORANGE]
 FACTION_RADIUS = 10
-FACTION_JOIN_TIME = 3 
-FACTION_MIN_MEMBERS = 5
+FACTION_JOIN_TIME = 2 
+FACTION_MIN_MEMBERS = 3
 
 
 world_shape = [int(WINDOW_SIZE[0]/WIDTH), int(WINDOW_SIZE[1]/HEIGHT)]
@@ -54,16 +54,16 @@ class Monster():
         self.y = y
         self.time_to_jump = 0
         self.elapsed_time = 0
-        self.a, self.b, self.c = 0, 0, 0 # Coefficients for quadratic equation
+        self.a, self.b, self.c = 0, 0, 0 
         self.direction = 0
         self.jumping = False
 
     def jump(self):
-        self.time_to_jump = random.uniform(5, 10) # Random time for jump
+        self.time_to_jump = random.uniform(5, 10) 
         self.elapsed_time = 0
-        self.a = random.uniform(-1.5, 1.5) # a coefficient can be negative or positive for up or down movement and lower absolute value for flatter trajectory
+        self.a = random.uniform(-1.5, 1.5) 
         self.b = random.uniform(-1, 1)
-        self.c = self.y # c is the current y-coordinate of the monster
+        self.c = self.y 
         self.direction = random.choice([-1, 1])
         self.jumping = True
 
@@ -77,14 +77,11 @@ class Monster():
             if self.elapsed_time >= self.time_to_jump:
                 self.jumping = False
                 if (self.time_to_jump > 7):
-                    radius = 100  # Define the radius within which to remove NPCs
+                    radius = 100  
                     npcs[:] = [npc for npc in npcs if ((npc.x - self.x)**2 + (npc.y - self.y)**2)**0.5 > radius]
-
-                    # insert logic to check if npc is within a certain raidus of the monster, and if it is a npc, remove it from the list of npcs
                     return True
                 else:
                     return False
-            # Check if monster coordinates exceed the boundaries
             if 0 <= self.x < WINDOW_SIZE[0] and 0 <= self.y < WINDOW_SIZE[1]:
                 self.x = new_x
                 self.y = new_y
@@ -92,19 +89,21 @@ class Monster():
             else:
                 self.jumping = False
                 return True
-
         return False
-    
     
     def draw(self, screen):
         pygame.draw.rect(screen, RED, pygame.Rect(int(self.x), int(self.y), 100, 100))
-
 
 class Army:
     def __init__(self, faction, leader):
         self.faction = faction
         self.members = []
         self.leader = leader
+        self.freeze = False
+        self.move_toward_battle = False
+        self.in_battle = False
+        self.battling_army = None
+        self.battle_count = 0
 
     def add_member(self, npc):
         self.members.append(npc)
@@ -113,6 +112,13 @@ class Army:
     def remove_member(self, npc):
         self.members.remove(npc)
         npc.in_army = False
+    
+    def battle(self, army1):
+        self.in_battle = True
+        army1.in_battle = True
+
+        self.battling_army = army1
+        army1.battling_army = self
 
 class NPC:
     def __init__(self, x, y, faction=None):
@@ -126,7 +132,7 @@ class NPC:
         self.age = 0
         self.life_span = random.randrange(50,100)
         self.reproduction_counter = random.randint(150, 250)
-        self.faction = faction  # New attribute
+        self.faction = faction  
         self.faction_time = 0
         self.hp = random.randrange(75, 100)
         self.damage = random.randrange(1, 10)
@@ -137,8 +143,7 @@ class NPC:
 
     def contains_point(self, x, y):
         return ((x - self.x) ** 2 + (y - self.y) ** 2) <= (WIDTH//2) ** 2
-    
-        
+          
     def update(self):
         self.age += time.time()
         if (self.age < self.life_span):
@@ -159,11 +164,36 @@ class NPC:
                 self.reproduce(mate)
                 self.reproduction_counter = random.randint(50, 100)
         
-        if self.in_army and len(self.path) == 0:
-            if self.distance_to(self.army.leader) > ARMY_LEADER_RADIUS:
-                dx = self.army.leader.x - self.x
-                dy = self.army.leader.y - self.y
-                angle = math.atan2(dy, dx)
+        if (self.in_army == False or self.army.freeze == False or self.army.leader is not self):
+            if self.in_army and len(self.path) == 0:
+                if self.distance_to(self.army.leader) > ARMY_LEADER_RADIUS:
+                    dx = self.army.leader.x - self.x
+                    dy = self.army.leader.y - self.y
+                    angle = math.atan2(dy, dx)
+                    new_x = self.x + self.speed * math.cos(angle)
+                    new_y = self.y + self.speed * math.sin(angle)
+
+                    if 0 <= new_x < WINDOW_SIZE[0] and 0 <= new_y < WINDOW_SIZE[1]: 
+                        if world[int(new_y/HEIGHT)][int(new_x/WIDTH)] >= 0:  
+                            self.x = new_x
+                            self.y = new_y
+            
+            elif len(self.path) > 0:
+                print("moving")
+                next_point = self.path[0]  
+                dx = next_point[0]*10 - self.x  
+                dy = next_point[1]*10 - self.y
+                distance = math.hypot(dx, dy)
+
+                if distance < self.speed:  
+                    self.path.pop(0) 
+                    if self.path: 
+                        next_point = self.path[0]
+                        dx = next_point[0]*WIDTH - self.x
+                        dy = next_point[1]*HEIGHT - self.y
+                        distance = math.hypot(dx, dy)
+
+                angle = math.atan2(dy, dx) 
                 new_x = self.x + self.speed * math.cos(angle)
                 new_y = self.y + self.speed * math.sin(angle)
 
@@ -172,30 +202,34 @@ class NPC:
                         self.x = new_x
                         self.y = new_y
             
-        elif len(self.path) > 0:
-            print("moving")
-            next_point = self.path[0]  
-            dx = next_point[0]*10 - self.x  
-            dy = next_point[1]*10 - self.y
-            distance = math.hypot(dx, dy)
+                if (self.in_army and self.army.leader == self and self.army.move_toward_battle == True):
+                    leader_pos = (self.x, self.y)
+                    target_pos = (select_army_1.leader.x, select_army_1.leader.y)
+                    
+                    if (math.sqrt((leader_pos[0] - target_pos[0])**2 + (leader_pos[1] - target_pos[1])**2) < 10):
+                        print("army leader frozen")
+                        self.army.freeze = True
+                    
+            else:
+                if self.moving:  
+                    if random.random() < MOVE_PROBABILITY_MOVING:  
+                        dx = self.speed * math.cos(self.angle)
+                        dy = self.speed * math.sin(self.angle)
+                        new_x = self.x + dx
+                        new_y = self.y + dy
 
-            if distance < self.speed:  
-                self.path.pop(0) 
-                if self.path: 
-                    next_point = self.path[0]
-                    dx = next_point[0]*WIDTH - self.x
-                    dy = next_point[1]*HEIGHT - self.y
-                    distance = math.hypot(dx, dy)
+                        if 0 <= new_x < WINDOW_SIZE[0] and 0 <= new_y < WINDOW_SIZE[1]:  
+                            if world[int(new_y/HEIGHT)][int(new_x/WIDTH)] >= 0:  
+                                self.x = new_x
+                                self.y = new_y
+                        else:  
+                            self.angle = random.uniform(0, 2 * math.pi)  
+                    else:  
+                        if random.random() < MOVE_PROBABILITY_STILL:  
+                            self.moving = True
+                            self.angle = random.uniform(0, 2 * math.pi)
 
-            angle = math.atan2(dy, dx) 
-            new_x = self.x + self.speed * math.cos(angle)
-            new_y = self.y + self.speed * math.sin(angle)
-
-            if 0 <= new_x < WINDOW_SIZE[0] and 0 <= new_y < WINDOW_SIZE[1]: 
-                    if world[int(new_y/HEIGHT)][int(new_x/WIDTH)] >= 0:  
-                        self.x = new_x
-                        self.y = new_y
-        else:
+    
             if self.moving:  
                 if random.random() < MOVE_PROBABILITY_MOVING:  
                     dx = self.speed * math.cos(self.angle)
@@ -210,33 +244,14 @@ class NPC:
                     else:  
                         self.angle = random.uniform(0, 2 * math.pi)  
                 else:  
-                    if random.random() < MOVE_PROBABILITY_STILL:  
-                        self.moving = True
-                        self.angle = random.uniform(0, 2 * math.pi)
-
-    
-        if self.moving:  
-            if random.random() < MOVE_PROBABILITY_MOVING:  
-                dx = self.speed * math.cos(self.angle)
-                dy = self.speed * math.sin(self.angle)
-                new_x = self.x + dx
-                new_y = self.y + dy
-
-                if 0 <= new_x < WINDOW_SIZE[0] and 0 <= new_y < WINDOW_SIZE[1]:  
-                    if world[int(new_y/HEIGHT)][int(new_x/WIDTH)] >= 0:  
-                        self.x = new_x
-                        self.y = new_y
-                else:  
-                    self.angle = random.uniform(0, 2 * math.pi)  
-            else:  
-                self.moving = False
-        else:
-            if random.random() < MOVE_PROBABILITY_STILL:  
-                self.moving = True
-                self.angle = random.uniform(0, 2 * math.pi)
+                    self.moving = False
+            else:
+                if random.random() < MOVE_PROBABILITY_STILL:  
+                    self.moving = True
+                    self.angle = random.uniform(0, 2 * math.pi)
 
         self.last_update = time.time()
-        return True  # NPC lives
+        return True 
     
     def find_mate(self):
         for npc in npcs: 
@@ -245,7 +260,7 @@ class NPC:
         return None
     
     def reproduce(self, mate):
-        if not self.in_army: 
+        if not self.in_army and len(npcs) > 50: 
             child_x = (self.x + mate.x) / 2
             child_y = (self.y + mate.y) / 2
             npcs.append(NPC(child_x, child_y))
@@ -260,7 +275,7 @@ class NPC:
         if self.faction is None:
             for npc in npcs:
                 if npc != self and npc.faction is not None and self.distance_to(npc) <= FACTION_RADIUS:
-                    if len(faction_members) < 100: 
+                    if len(faction_members) < 20: 
                         self.faction = npc.faction 
                         break
                     break
@@ -335,6 +350,9 @@ shake_monster_y = 0
 click_army_attack = False
 click_army_attack_rect = pygame.Rect(10, 265, 75, 75)
 
+select_army_1 = None
+select_army_2 = None
+
 while not done:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -345,6 +363,29 @@ while not done:
             click_shake_screen = False
             explosion_pos = pygame.mouse.get_pos()
             explosion_duration = 40
+        
+        if (event.type == pygame.MOUSEBUTTONDOWN and event.button == 1):
+            if (click_army_attack):
+                for npc in npcs:
+                    if (npc.contains_point(*event.pos) and npc.in_army and select_army_1 == None):
+                        select_army_1 = npc.army
+                        npc.army.freeze = True
+                        break
+                    elif (npc.contains_point(*event.pos) and npc.in_army and select_army_1 != None and select_army_1.faction != npc.faction):
+                        select_army_2 = npc.army
+                        start = (int(select_army_2.leader.x / WIDTH), int(select_army_2.leader.y / HEIGHT))
+                        end = (int(select_army_1.leader.x / WIDTH), int(select_army_1.leader.y / HEIGHT))
+                        select_army_2.leader.path = find_path(world_a_star, start, end)
+                        select_army_2.move_toward_battle = True
+                        click_army_attack = False
+                        break
+        if (select_army_1 != None and select_army_2 != None and select_army_1.freeze == True and select_army_2.freeze == True):
+            print("entered battle pos")
+            # THIS CODE ALSO WORKS
+            # ITS JUST THAT THE BATTLE SEEMS TO NOT BE WORKING
+            select_army_1.battle(select_army_2)
+            select_army_2.battle(select_army_1)
+
 
         if (event.type == pygame.MOUSEBUTTONDOWN):
             if (event.button == 1):
@@ -481,7 +522,61 @@ while not done:
         npc.update_faction()
 
     armies = [army for army in armies if army.leader in npcs and len(army.members) > 0]
+    if (select_army_1 != None and select_army_2 != None):
+        if (select_army_1.in_battle):
+            if (select_army_1.battle_count == 10):
+                size_army = len(select_army_1.members)
+                damage = max(int(size_army*0.2), 1)
+                if (damage > len(select_army_1.battling_army.members)):
+                    shake_monster_duration += 10
+                    for npc in select_army_2.members:
+                        npcs.remove(npc)
+                    select_army_2 = None
 
+                    for npc in npcs:
+                        if npc.faction == select_army_1.battling_army.faction:
+                            npc.faction = select_army_1.faction
+                    select_army_1.freeze = False
+                    select_army_1.move_toward_battle = False
+                    select_army_1.in_battle = False
+                    select_army_1.battling_army = None
+                    select_army_1.battle_count = 0
+
+
+                else:
+                    for i in range(0, damage):
+                        
+                        print(f"{select_army_2.members.pop(0)} npc kill")
+                    select_army_1.battle_count = 0
+            else:
+                select_army_1.battle_count += 1
+                
+        elif (select_army_2.in_battle):
+            if (select_army_2.battle_count == 10):
+                size_army = len(select_army_2.members)
+                damage = max(int(size_army*0.2), 1)
+                if (damage > len(select_army_1.members)):
+                    shake_monster_duration += 10
+                    print("npc genocide for army 1")
+                    for npc in select_army_1.members:
+                        npcs.remove(npc)
+                    select_army_1 = None
+                    for npc in npcs:
+                        if npc.faction == select_army_2.battling_army.faction:
+                            npc.faction = select_army_2.faction
+                    select_army_2.freeze = False
+                    select_army_2.move_toward_battle = False
+                    select_army_2.in_battle = False
+                    select_army_2.battling_army = None
+                    select_army_2.battle_count = 0
+                else:
+                    for i in range(0, damage):
+                        print("killin npc kill kill")
+                        select_army_1.members.pop(0)
+                    select_army_2.battle_count = 0
+            else:
+                select_army_2.battle_count += 1
+    
     for npc in npcs: 
         npc.draw(screen)
 
