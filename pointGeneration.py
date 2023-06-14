@@ -300,7 +300,7 @@ class NPC:
         self.army = army
 
     def draw(self, screen):
-        color = FACTION_COLORS[self.faction] if self.faction is not None else WHITE  
+        color = FACTION_COLORS[self.faction] if self.faction is not None else BLACK  
         if self.in_army and self.clicked:
             pygame.draw.rect(screen, color, pygame.Rect(int(self.x), int(self.y), WIDTH, HEIGHT))
             pygame.draw.rect(screen, (0,0,0), pygame.Rect(int(self.x) - 2, int(self.y) - 2, WIDTH + 2 * 2, HEIGHT + 2 * 2), 2)
@@ -327,7 +327,7 @@ for i in range(world_shape[0]):
 
 pygame.init()
 
-screen = pygame.display.set_mode(WINDOW_SIZE)
+screen = pygame.display.set_mode([800, 900])
 pygame.display.set_caption("Procedurally Generated Map")
 
 npcs = [NPC(random.randrange(WINDOW_SIZE[0]), random.randrange(WINDOW_SIZE[1])) for _ in range(10)]
@@ -357,19 +357,24 @@ click_army_attack_rect = pygame.Rect(10, 265, 75, 75)
 select_army_1 = None
 select_army_2 = None
 
+click_rect_1 = False
+click_rect_2 = False
+click_rect_3 = False
+click_rect_4 = False
+
 while not done:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             done = True
         
-        if (click_shake_screen == True and event.type == pygame.MOUSEBUTTONDOWN and event.button == 1):
+        if (click_rect_2 == True and event.type == pygame.MOUSEBUTTONDOWN and event.button == 1):
             shake_duration = 20 
-            click_shake_screen = False
+            click_rect_2 = False
             explosion_pos = pygame.mouse.get_pos()
             explosion_duration = 40
         
         if (event.type == pygame.MOUSEBUTTONDOWN and event.button == 1):
-            if (click_army_attack):
+            if (click_rect_4):
                 for npc in npcs:
                     if (npc.contains_point(*event.pos) and npc.in_army and select_army_1 == None):
                         select_army_1 = npc.army
@@ -381,8 +386,9 @@ while not done:
                         end = (int(select_army_1.leader.x / WIDTH), int(select_army_1.leader.y / HEIGHT))
                         select_army_2.leader.path = find_path(world_a_star, start, end)
                         select_army_2.move_toward_battle = True
-                        click_army_attack = False
+                        click_rect_4 = False
                         break
+
         if (select_army_1 != None and select_army_2 != None and select_army_1.freeze == True and select_army_2.freeze == True):
             print("entered battle pos")
             # THIS CODE ALSO WORKS
@@ -393,14 +399,14 @@ while not done:
 
         if (event.type == pygame.MOUSEBUTTONDOWN):
             if (event.button == 1):
-                if (spawn_npc_rect.collidepoint(event.pos)):
-                    click_spawn_npc = True
-                elif (screen_shake_rect.collidepoint(event.pos)):
-                    click_shake_screen = True
-                elif (spawn_monster_rect.collidepoint(event.pos)):
-                    click_spawn_monster = True
-                elif (click_army_attack_rect.collidepoint(event.pos)):
-                    click_army_attack = True
+                if (rect_1.collidepoint(event.pos)):
+                    click_rect_1 = True
+                elif (rect_2.collidepoint(event.pos)):
+                    click_rect_2 = True
+                elif (rect_3.collidepoint(event.pos)):
+                    click_rect_3 = True
+                elif (rect_4.collidepoint(event.pos)):
+                    click_rect_4 = True
         
         if (event.type == pygame.MOUSEBUTTONDOWN):
             if (event.button == 1):
@@ -422,13 +428,13 @@ while not done:
                             clicked_npc = npc
                             break
 
-        if (click_spawn_npc == True and event.type == pygame.MOUSEBUTTONDOWN and not spawn_npc_rect.collidepoint(event.pos)):
-            if (event.button == 1):
-                    pos = pygame.mouse.get_pos()
-                    npcs.append(NPC(pos[0], pos[1]))
-                    click_spawn_npc = False
-        elif (click_spawn_monster == True and event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and not spawn_monster_rect.collidepoint(event.pos)):
-            click_spawn_monster = False
+        if (click_rect_1 == True and event.type == pygame.MOUSEBUTTONDOWN and not rect_1.collidepoint(event.pos) and event.button == 1):
+            pos = pygame.mouse.get_pos()
+            if (event.button == 1 and pos[0] <= 800 and pos[1] <= 800):
+                npcs.append(NPC(pos[0], pos[1]))
+                click_rect_1 = False
+        elif (click_rect_3 == True and event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and not rect_3.collidepoint(event.pos)):
+            click_rect_3 = False
             pos = pygame.mouse.get_pos()
             monsters.append(Monster(pos[0], pos[1]))
         
@@ -447,7 +453,7 @@ while not done:
     else:
         shake_monster_x = 0
         shake_monster_y = 0
-    
+    screen.fill(BLACK)
     screen.fill(BLACK, rect=pygame.Rect(shake_x + shake_monster_x, shake_y + shake_monster_y, *WINDOW_SIZE))
 
     for row in range(world_shape[0]):
@@ -467,27 +473,61 @@ while not done:
                 color = FOREST_GREEN
             else:
                 color = WHITE
-            pygame.draw.rect(screen, color, [(WIDTH) * column + shake_x + shake_monster_x, (HEIGHT) * row + shake_y + shake_monster_y, WIDTH, HEIGHT])
-    
-    if (click_spawn_npc):
-        pygame.draw.rect(screen, GREY, spawn_npc_rect)
-    else:
-        pygame.draw.rect(screen, BLACK, spawn_npc_rect)
-    
-    if (click_shake_screen):
-        pygame.draw.rect(screen, GREY, screen_shake_rect)
-    else:
-        pygame.draw.rect(screen, BLACK, screen_shake_rect)
 
-    if (click_spawn_monster):
-        pygame.draw.rect(screen, GREY, spawn_monster_rect)
-    else:
-        pygame.draw.rect(screen, BLACK, spawn_monster_rect)
+            pygame.draw.rect(screen, color, [(WIDTH) * column + shake_x + shake_monster_x, (HEIGHT) * row + shake_y + shake_monster_y, WIDTH, HEIGHT])
+    font = pygame.font.Font('persansb.ttf', 36)
+
+    npc_text = font.render('NPC', True, BLACK, [255,204,153])
+    explosion_text = font.render('Explosion', True, BLACK, [255,255,153])
+    monster_text = font.render('Monster', True, BLACK, [204,255,153])
+    army_attack_text = font.render('Army Attack', True, BLACK, [153,255,255])
+
+    npc_text_rect = npc_text.get_rect()
+    npc_text_rect.center = (50, 850)
+    rect_1 = pygame.Rect(4, 821, 95, 54)
+
+    explosion_text_rect = explosion_text.get_rect()
+    explosion_text_rect.center = (200, 850)
+    rect_2 = pygame.Rect(107, 821, 186, 54)
+
+    monster_text_rect = monster_text.get_rect()
+    monster_text_rect.center = (380, 850)
+    rect_3 = pygame.Rect(300, 821, 158, 54)
+
+    army_attack_text_rect = army_attack_text.get_rect()
+    army_attack_text_rect.center = (588, 850)
+    rect_4 = pygame.Rect(467, 821, 242, 54)
     
-    if (click_army_attack):
-        pygame.draw.rect(screen, GREY, click_army_attack_rect)
+    if (click_rect_1):
+        pygame.draw.rect(screen, [255,153,51], rect_1)
+        npc_text = font.render('NPC', True, BLACK, [255,153,51])
+        screen.blit(npc_text, npc_text_rect)
     else:
-        pygame.draw.rect(screen, BLACK, click_army_attack_rect)
+        pygame.draw.rect(screen, [255,204,153], rect_1)
+    
+    if (click_rect_2):
+        pygame.draw.rect(screen, [255,255,51], rect_2)
+        explosion_text = font.render('Explosion', True, BLACK, [255,255,51])
+    else:
+        pygame.draw.rect(screen, [255,255,153], rect_2)
+
+    if (click_rect_3):
+        pygame.draw.rect(screen, [128, 255, 0], rect_3)
+        monster_text =  font.render('Monster', True, BLACK, [128, 255, 0])
+    else:
+        pygame.draw.rect(screen, [204,255,153], rect_3)
+    
+    if (click_rect_4):
+        pygame.draw.rect(screen, [51, 255, 255], rect_4)
+        army_attack_text = font.render("Army Attack", True, BLACK, [51, 255, 255])
+    else:
+        pygame.draw.rect(screen, [153,255,255], rect_4)
+    
+    screen.blit(npc_text, npc_text_rect)
+    screen.blit(explosion_text, explosion_text_rect)
+    screen.blit(monster_text, monster_text_rect)
+    screen.blit(army_attack_text, army_attack_text_rect)
+
         
 
     if explosion_duration > 0:
@@ -529,7 +569,10 @@ while not done:
         if (random.random() < 0.01 and not monster.jumping):
             print('entered')
             monster.jump()
-        
+
+    
+
+
     for npc in npcs: 
         npc.update_faction()
 
@@ -553,7 +596,6 @@ while not done:
                     select_army_1.in_battle = False
                     select_army_1.battling_army = None
                     select_army_1.battle_count = 0
-
 
                 else:
                     for i in range(0, damage):
@@ -591,9 +633,7 @@ while not done:
     
     for npc in npcs: 
         npc.draw(screen)
-
     clock.tick(60)
     pygame.display.flip()
 
 pygame.quit()
-
