@@ -4,12 +4,9 @@ def heuristic(a, b):
     return abs(b[0] - a[0]) + abs(b[1] - a[1])
 
 def find_path(grid, start, end):
-    # Directions for movement in grid (up, down, left, right, diagonally up-right, up-left, down-right, down-left)
     directions = [(0, 1), (0, -1), (1, 0), (-1, 0), (1, 1), (1, -1), (-1, 1), (-1, -1)]
 
-    # The queue will consist of nodes with priority equals to "cost + heuristic"
     queue = [(0, start)]
-    # Cost map and parent map to store the cost and path
     cost_map = {start: 0}
     parent_map = {start: None}
 
