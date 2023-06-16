@@ -21,7 +21,7 @@ label.pack(pady=20)
 
 start_button = Button(root, text="Start Game", command=start_game, font=("Arial", 18, "bold"), padx=50, pady=20)
 
-canvas.create_text(500, 400, text="Center Text", font=("Arial", 40, "bold"), fill="white")
+canvas.create_text(500, 400, text="World Simulation Game", font=("Arial", 40, "bold"), fill="white")
 
 # Reduce the rely value to move the button up
 start_button.place(relx=0.5, rely=0.5, anchor="n")
